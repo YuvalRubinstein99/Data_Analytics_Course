@@ -1,0 +1,105 @@
+---
+title: "Final Project"
+output:
+  html_document: default
+  pdf_document: default
+date: '2022-05-17'
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+First, lets import the relevant libraries:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library (ggplot2)
+library (readr)
+library(dplyr)
+library(matrixStats)
+```
+
+Loading our data from a csv file:
+
+```{r}
+raw_data <- readr::read_csv("https://raw.githubusercontent.com/YuvalRubinstein99/Data_Analytics_Course/main/The_Chase__Dataset.csv")
+```
+
+Lets get to know our data better:
+
+```{r}
+glimpse(raw_data)
+```
+
+Since that the dataset is built in a horizental structure, we are going to add a few columns that would help us treat each row as a specific group:
+
+*group_id - int type, will hold a unique ID for each group.* fast_round_sum - dbl type, will hold the initial sum of the fast round for the entire group.
+*team_members_left - dbl type, will hold the amount of team members that made it to the last stage.* drop_outs - dbl type, will hold the maount of team members that didn't make it to the last stage.
+*avg_age - dbl type, will hold the average age of the entire group.* std_age - dbl type, will hold the std of the age of the entire group.
+
+```{r}
+fast_rounds = c("p_1_fast_round_sum", "p_2_fast_round_sum", "p_3_fast_round_sum","p_4_fast_round_sum")
+
+player_stat = c("p1_round_status", "p_2_round_status", "p_3_round_status", "p_4_round_status")
+
+player_age = c("p_1_age","p_2_age","p_3_age","p_4_age")
+p1_risk_cols = c("p_1_play_sum_chosen","p_1_fast_round_sum")
+p2_risk_cols = c("p_2_fast_round_sum", "p_2_play_sum_chosen") 
+p3_risk_cols = c("p_3_fast_round_sum", "p_3_play_sum_chosen") 
+p4_risk_cols = c("p_4_fast_round_sum", "p_4_play_sum_chosen") 
+chaser <- raw_data %>%
+  mutate(group_id = row_number()) %>%
+  mutate(fast_round_sum = rowSums(chaser[, fast_rounds])) %>% 
+  mutate(team_members_left = rowSums(chaser[, player_stat])) %>%
+  mutate(drop_outs = 4 - team_members_left) %>%
+  mutate(avg_age = rowMeans(chaser[, player_age])) %>%
+  mutate(age_std = rowSds(as.matrix(chaser[, player_age]))) %>%
+  mutate(p1_risk_taker = rowDiffs(as.matrix(chaser[,p1_risk_cols])) > 0) %>%
+  mutate(p2_risk_taker = rowDiffs(as.matrix(chaser[, p2_risk_cols])) > 0) %>%
+  mutate(p3_risk_taker = rowDiffs(as.matrix(chaser[, p3_risk_cols])) > 0) %>%
+  mutate(p4_risk_taker = rowDiffs(as.matrix(chaser[, p4_risk_cols])) > 0) 
+
+chaser
+
+```
+
+Lets check our new data variables:
+
+```{r}
+summary(chaser)
+```
+
+Now we'll check the different distributions of our variablesת Lets start with the right answers distribution:
+
+```{r}
+
+questions_dist <- ggplot(chaser, aes(x=question_answered)) +
+  geom_histogram(bins=20, fill="darkolivegreen1")
+
+questions_dist
+
+```
+
+Lets see the age distribution:
+
+```{r}
+ggplot(data=chaser, aes(x=avg_age))+
+  geom_density(fill="darkolivegreen1")
+```
+
+Lets check the connection between the average group age to the group total sum of money:
+
+```{r}
+ggplot(data = chaser, aes(x = avg_age, y = team_total_sum,
+color = '')) + geom_point()
+
+```
+
+
+now we gonna check distributions of risk takers while:
+1 represents if the player was willing to take the 
+```{r risk taking}
+
+```
+\`\`\`
