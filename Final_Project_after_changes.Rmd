@@ -1,0 +1,194 @@
+---
+title: "Final Project"
+output:
+  html_document: default
+  pdf_document: default
+date: '2022-05-17'
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+First, lets import the relevant libraries:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library (ggplot2)
+library (readr)
+library(dplyr)
+library(matrixStats)
+library(grid)
+library(gridExtra)
+```
+
+Loading our data from a csv file:
+
+```{r}
+raw_data <- readr::read_csv("https://raw.githubusercontent.com/YuvalRubinstein99/Data_Analytics_Course/main/The_Chase__Dataset.csv")
+```
+
+Lets get to know our data better:
+
+```{r}
+glimpse(raw_data)
+```
+
+Since that the dataset is built in a horizental structure, we are going to create 4 tables - one for each player and combine it all to a one vertical table: 
+
+```{r}
+# Adding a group id number:
+raw_data <- raw_data %>%
+  mutate(group_id = row_number())
+
+# Creating tables for each player:
+p1_tb <- raw_data %>%
+  select(p_1_gender, p_1_age, p_1_fast_round_sum, p_1_play_sum_chosen, p1_round_status, group_id, team_total_sum, question_answered, game_result, season) %>%
+   rename(
+    Gender = p_1_gender,
+    Age = p_1_age,
+    Fast_round_sum = p_1_fast_round_sum,
+    Play_sum_chosen = p_1_play_sum_chosen,
+    Round_status = p1_round_status,
+    Team_question_answered = question_answered
+    )
+
+p2_tb <- raw_data %>%
+  select(p_2_gender, p_2_age, p_2_fast_round_sum, p_2_play_sum_chosen, p_2_round_status, group_id, team_total_sum, question_answered, game_result, season) %>%
+     rename(
+    Gender = p_2_gender,
+    Age = p_2_age,
+    Fast_round_sum = p_2_fast_round_sum,
+    Play_sum_chosen = p_2_play_sum_chosen,
+    Round_status = p_2_round_status,
+    Team_question_answered = question_answered
+    )
+
+p3_tb <- raw_data %>%
+  select(p_3_gender, p_3_age, p_3_fast_round_sum, p_3_play_sum_chosen, p_3_round_status, group_id, team_total_sum, question_answered, game_result, season) %>%
+     rename(
+    Age = p_3_age,
+    Gender = p_3_gender,
+    Fast_round_sum = p_3_fast_round_sum,
+    Play_sum_chosen = p_3_play_sum_chosen,
+    Round_status = p_3_round_status,
+    Team_question_answered = question_answered
+    )
+
+p4_tb <- raw_data %>%
+  select(p_4_gender, p_4_age, p_4_fast_round_sum, p_4_play_sum_chosen, p_4_round_status, group_id, team_total_sum, question_answered, game_result, season) %>%
+     rename(
+    Gender = p_4_gender,
+    Age = p_4_age,
+    Fast_round_sum = p_4_fast_round_sum,
+    Play_sum_chosen = p_4_play_sum_chosen,
+    Round_status = p_4_round_status,
+    Team_question_answered = question_answered
+    )
+
+## Combine the 4 tables and creating a unique player id:
+combined_data <-rbind(p1_tb, p2_tb, p3_tb, p4_tb)
+
+glimpse(combined_data)
+
+```
+
+We are going to add a few columns:
+* player_id - int type, holds a unique value for each player
+* risk_taker - int type, holds 1 if the player took risk and 0 if not:
+
+```{r}
+risk_cols = c("Play_sum_chosen", "Fast_round_sum")
+
+chaser <- combined_data %>%
+  mutate(
+    player_id = row_number(),
+    risk_taker = ifelse(rowDiffs(as.matrix(chaser[ , risk_cols])) > 0, 1, 0))
+
+```
+
+Lets check our new data variables:
+
+```{r}
+summary(chaser)
+```
+
+Now we'll check the different distributions of our variablesת Lets start with the right answers distribution:
+
+```{r}
+
+questions_dist <- ggplot(chaser, aes(x=Team_question_answered)) +
+  geom_histogram(bins=20, fill="darkolivegreen1")
+
+questions_dist
+
+```
+
+Lets see the age distribution:
+
+```{r}
+
+ggplot(data=chaser, aes(x= Age)) +
+  geom_density(fill="darkolivegreen1")
+
+
+```
+
+Lets check the connection between the average group age to the group total sum of money:
+
+```{r}
+ggplot(data = chaser, aes(x = Age, y = Fast_round_sum,
+color = '')) + geom_point()
+
+
+```
+
+```{r}
+#par(mfrow=c(2,2))
+
+player_bp <- boxplot(Fast_round_sum ~ Gender,
+data=chaser,
+main=" Fast Round Sum by Gender",
+col="orange",
+border="gray"
+)
+```
+
+
+
+
+now we gonna check distributions of risk takers while:
+1 represents if the player was willing to take the risk
+```{r}
+
+ggplot(chaser, aes(x = count(as.vector(chaser[,c("game_result")] == 0)), y = sum_risktakers)) + theme_bw() +
+  stat_smooth(method = "lm") + geom_point()
+
+risktakers <- select(chaser, sum_risktakers, game_result, team_total_sum)
+ggplot(risktakers, aes( y = sum_risktakers,x = team_total_sum)) + theme_bw() +
+  stat_smooth(method = "lm") + geom_point()
+
+risk_taking_players <- select(chaser,
+                              group_id,
+                              p1_risk_taker,
+                              p2_risk_taker,
+                              p3_risk_taker,
+                              p4_risk_taker) %>%
+  pivot_longer(., 
+               cols = c(p1_risk_taker,
+                        p2_risk_taker,
+                        p3_risk_taker,
+                        p4_risk_taker),
+               names_to = "player",
+               values_to = "is_risk_taker") %>%
+  mutate(num_player = ifelse(player == "p1_risk_taker", 1,
+         ifelse(player == "p2_risk_taker", 2,
+         ifelse(player == "p3_risk_taker",3 ,4)))) %>%
+  select(num_player, is_risk_taker) %>%
+  group_by(num_player) %>%
+  filter(is_risk_taker == 1) %>%
+  summarise(num_player = n)
+
+```
+
+
